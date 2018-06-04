@@ -1,0 +1,5 @@
+# Backup files from vim, emacs and python
+*.pyc
+
+*~
+#*#
