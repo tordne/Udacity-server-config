@@ -25,6 +25,9 @@
         - [Install Kernel-ml](#install-kernel-ml)
     - [Install additional packages](#install-additional-packages)
         - [Git](#git)
+        - [Server Configuartions](#server-configuartions)
+    - [Advanced Server Setup](#advanced-server-setup)
+        - [Prompt](#prompt)
 - [References](#references)
 
 <!-- /MarkdownTOC -->
@@ -187,6 +190,23 @@ Install Git to retrieve additional packages
 ```bash
 sudo yum install git
 ```
+
+#### Server Configuartions
+We will clone several helper files onto the server with git.  
+Go to your home directory and clone the Server Config.
+```bash
+git clone https://github.com/tordne/Udacity-server-config.git
+```
+
+### Advanced Server Setup
+#### Prompt
+CentOS default prompt is bland and makes it difficult to view information.
+```bash
+cd Udacity-server-config
+sudo cp prompt.sh /etc/profile.d/
+```
+`exit` the VPS and log back in with grader, now you will have a fancy prompt.
+
 
 
 
