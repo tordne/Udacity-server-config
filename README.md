@@ -20,6 +20,11 @@
         - [Change root password](#change-root-password)
         - [Create a user with sudo privileges](#create-a-user-with-sudo-privileges)
         - [Remove the SSH root login](#remove-the-ssh-root-login)
+    - [System Update && Upgrade](#system-update--upgrade)
+        - [yum update](#yum-update)
+        - [Install Kernel-ml](#install-kernel-ml)
+    - [Install additional packages](#install-additional-packages)
+        - [Git](#git)
 - [References](#references)
 
 <!-- /MarkdownTOC -->
@@ -146,12 +151,42 @@ To finish off our basic server ssh configuration, we want to prevent ssh root lo
 First we will log out and log back in with our new user grader.
 ```bash
 ssh -p 2200 grader@51.38.83.98
-sud vi /etc/ssh/sshd_config
+sudo vi /etc/ssh/sshd_config
 ```
 go to the line with `#PermitRootLogin yes` and change it to `PermitRootLogin no`
 
+### System Update && Upgrade
+#### yum update
+Make sure that the basic system has all the latest packages
+```bash
+sudo yum update
+```
 
+#### Install Kernel-ml
+Kernels are regularly being update and security holes are plugged, so it is imperative to use the latest kernel updates.  
+The following 2 lines will install the elrepo repository and its GPG key.
+```bash
+sudo rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
+sudo rpm -Uvh http://www.elrepo.org/elrepo-release-7.0-3.el7.elrepo.noarch.rpm 
+```
+Install the latest kernel
+```bash
+sudo yum --enablerepo=elrepo-kernel install kernel-ml
+```
+Open and edit the file **/etc/default/grub** and set `GRUB_DEFAULT=0` above `GRUB_DISABLE_SUBMENU`  
+Then run the following command to recreate the kernel configuartion.  
+And reboot the VPS
+```bash
+sudo grub2-mkconfig -o /boot/grub2/grub.cfg
+sudo systemctl reboot
+```
 
+### Install additional packages
+#### Git
+Install Git to retrieve additional packages
+```bash
+sudo yum install git
+```
 
 
 
@@ -159,3 +194,4 @@ go to the line with `#PermitRootLogin yes` and change it to `PermitRootLogin no`
 ## References
 [Change default port CentOS 7](https://www.liberiangeek.net/2014/11/change-openssh-port-centos-7/)  
 [Secure your SSH](https://stribika.github.io/2015/01/04/secure-secure-shell.html)
+[CentOS 7 update kernel](https://www.tecmint.com/install-upgrade-kernel-version-in-centos-7/)
