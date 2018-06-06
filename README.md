@@ -279,8 +279,8 @@ We will need to close port 22 and open others i.e. http, https, ntp
 ```bash
 sudo firewall-cmd --permanent --zone=public --add-service=http
 sudo firewall-cmd --permanent --zone=public --add-service=https
-sudo firewall-cmd --permanent --zone=public --add-service=ntp
 sudo firewall-cmd --permanent --zone=public --remove-service=ssh
+sudo firewall-cmd --reload
 ```
 
 #### Start Apache service
