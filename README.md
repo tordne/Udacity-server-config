@@ -30,12 +30,14 @@
         - [Postgresql](#postgresql)
         - [Python 3.X](#python-3x)
         - [Apache 2.4.33](#apache-2433)
+        - [Let's encrypt Certbot](#lets-encrypt-certbot)
     - [Advanced Server Setup](#advanced-server-setup)
         - [Prompt](#prompt)
         - [Timezone UTC](#timezone-utc)
         - [Secure SSH](#secure-ssh)
         - [Firewall configuration](#firewall-configuration)
         - [Start Apache service](#start-apache-service)
+        - [Configure Apache for Catalog site](#configure-apache-for-catalog-site)
 - [References](#references)
 
 <!-- /MarkdownTOC -->
@@ -228,7 +230,14 @@ sudo yum install python36u python36u-pip
 #### Apache 2.4.33
 We will install the latest apache which will support http2
 ```bash
-sudo yum install httpd24u
+sudo yum install httpd24u python2-certbot-apache
+```
+
+#### Let's encrypt Certbot
+When using logins and databases it should be standard for sites to use https.  
+Certbot gives free SSL certificates which can be renewed every 3 months.
+```bash
+sudo yum install httpd24u-mod_ssl
 ```
 
 ### Advanced Server Setup
@@ -290,6 +299,31 @@ After installing Apache2.4.33 the service has not yet been enabled. So
 sudo systemctl enable httpd.service
 sudo systemctl restart httpd.service
 ```
+
+#### Configure Apache for Catalog site
+To create multiple virtual hosts we need to prepare apache
+```bash
+sudo mkdir /etc/httpd/sites-{enabled,available}
+```
+Create a file called `catalog.conf` and copy the following inside
+```html
+Listen 80
+Listen 443
+
+<VirtualHost *:80>
+  ServerName catalog.vps551706.ovh.net
+  DocumentRoot /var/www/catalog
+  Redirect permanent "/" "https://catalog.vps551706.ovh.net"
+</VirtualHost>
+
+<VirtualHost *:443>
+  ServerName catalog.vps551706.ovh.net
+  DocumentRoot /var/www/catalog
+</VirtualHost>
+```
+
+
+
 
 
 
