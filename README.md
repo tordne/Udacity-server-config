@@ -48,6 +48,7 @@ I made an account and created an instance and after going through the inital set
 * First I noticed the lack of options of Operating Systems. 
 * Instead of using the default ssh key which was created by AWS, I wanted to used the most secure ed25519 and several faults were given that my chosen encryption was not supported.
 * Other OS, i.e. RedHat and CentOS uses SELinux which uses MAC (Mandatory Access Control) ontop of DAC (Descretionary Access Control).
+* **Cronyd** CentOS uses crony as standard, it is more reliable, faster, more accurate than ntpd. It also doesn't need any open ports to synchronise with online timeservers.
 
 For These reasons I decided to create a server on [OVH](https://www.ovh.co.uk) and host our previous projects on the VPS.  
 OVH has several choices for your VPS, in this instance we will use the basic [VPS SSD 1](https://www.ovh.co.uk/vps/vps-ssd.xml)
