@@ -23,12 +23,19 @@
     - [System Update && Upgrade](#system-update--upgrade)
         - [yum update](#yum-update)
         - [Install Kernel-ml](#install-kernel-ml)
+        - [Inline with Upstream Stable repository](#inline-with-upstream-stable-repository)
     - [Install additional packages](#install-additional-packages)
         - [Git](#git)
         - [Server Configuartions](#server-configuartions)
+        - [Postgresql](#postgresql)
+        - [Python 3.X](#python-3x)
+        - [Apache 2.4.33](#apache-2433)
     - [Advanced Server Setup](#advanced-server-setup)
         - [Prompt](#prompt)
+        - [Timezone UTC](#timezone-utc)
         - [Secure SSH](#secure-ssh)
+        - [Firewall configuration](#firewall-configuration)
+        - [Start Apache service](#start-apache-service)
 - [References](#references)
 
 <!-- /MarkdownTOC -->
@@ -185,6 +192,12 @@ sudo grub2-mkconfig -o /boot/grub2/grub.cfg
 sudo systemctl reboot
 ```
 
+#### Inline with Upstream Stable repository
+IUS community brings latest software versions to RHEL-based systems.
+```bash
+sudo yum install https://centos7.iuscommunity.org/ius-release.rpm
+```
+
 ### Install additional packages
 #### Git
 Install Git to retrieve additional packages
@@ -199,6 +212,24 @@ Go to your home directory and clone the Server Config.
 git clone https://github.com/tordne/Udacity-server-config.git
 ```
 
+#### Postgresql
+We'll install postgresql to use for our item-catalog project
+```bash
+sudo yum install postgresql
+```
+
+#### Python 3.X
+Install the latest python version.
+```bash
+sudo yum install python36u python36u-pip
+```
+
+#### Apache 2.4.33
+We will install the latest apache which will support http2
+```bash
+sudo yum install httpd24u
+```
+
 ### Advanced Server Setup
 #### Prompt
 CentOS default prompt is bland and makes it difficult to view information.
@@ -207,6 +238,13 @@ cd Udacity-server-config
 sudo cp prompt.sh /etc/profile.d/
 ```
 `exit` the VPS and log back in with grader, now you will have a fancy prompt.
+
+#### Timezone UTC
+The timezone is set in `/etc/localtime` which is a symlink to one of the time zones in `/usr/share/zoneinfo/`.  
+To change it we'll use the following command.
+```bash
+sudo timedatectl set-timezone UTC
+```
 
 #### Secure SSH
 To protect your VPS against brute force password attacks we'll use passwordless ssh login.  
@@ -235,6 +273,23 @@ then restart the sshd service
 sudo systemctl sshd.service
 ```
 
+#### Firewall configuration
+Firewalld is active and has multiple zones, of which by default only public is active with several ports.  
+We will need to close port 22 and open others i.e. http, https, ntp
+```bash
+sudo firewall-cmd --permanent --zone=public --add-service=http
+sudo firewall-cmd --permanent --zone=public --add-service=https
+sudo firewall-cmd --permanent --zone=public --add-service=ntp
+sudo firewall-cmd --permanent --zone=public --remove-service=ssh
+```
+
+#### Start Apache service
+After installing Apache2.4.33 the service has not yet been enabled. So
+```bash
+sudo systemctl enable httpd.service
+sudo systemctl restart httpd.service
+```
+
 
 
 
@@ -243,5 +298,5 @@ sudo systemctl sshd.service
 
 ## References
 [Change default port CentOS 7](https://www.liberiangeek.net/2014/11/change-openssh-port-centos-7/)  
-[Secure your SSH](https://stribika.github.io/2015/01/04/secure-secure-shell.html)
+[Secure your SSH](https://www.hugeserver.com/kb/secure-ssh-on-centos-7/)  
 [CentOS 7 update kernel](https://www.tecmint.com/install-upgrade-kernel-version-in-centos-7/)
