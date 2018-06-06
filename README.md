@@ -28,6 +28,7 @@
         - [Server Configuartions](#server-configuartions)
     - [Advanced Server Setup](#advanced-server-setup)
         - [Prompt](#prompt)
+        - [Secure SSH](#secure-ssh)
 - [References](#references)
 
 <!-- /MarkdownTOC -->
@@ -206,6 +207,35 @@ cd Udacity-server-config
 sudo cp prompt.sh /etc/profile.d/
 ```
 `exit` the VPS and log back in with grader, now you will have a fancy prompt.
+
+#### Secure SSH
+To protect your VPS against brute force password attacks we'll use passwordless ssh login.  
+**On your client do the following:**  
+Create a strong ed25519 key
+```bash
+ssh-keygen -o -a 100 -t ed25519
+```
+create a config file `~/.ssh/config` with permission **600** and enter:
+```bash
+Host grader-udacity
+  Hostname 51.38.83.98
+  Port 2200
+  User grader
+  PreferredAuthentications publickey
+  IdentityFile ~/.ssh/id_ed25519
+```
+**On your open terminal do the following**  
+Copy the contents of public key `id_ed25519.pub` in the file `~/.ssh/authorized_keys`  
+Then modify `/etc/ssh/sshd_config` with sudo and change  
+`PasswordAuthentication yes` to `PasswordAuthentication no`  
+and  
+`PubkeyAuthentication no` to `PubkeyAuthentication yes`  
+then restart the sshd service
+```bash
+sudo systemctl sshd.service
+```
+
+
 
 
 
