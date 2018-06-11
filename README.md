@@ -38,6 +38,9 @@
         - [Firewall configuration](#firewall-configuration)
         - [Start Apache service](#start-apache-service)
         - [Configure Apache for Catalog site](#configure-apache-for-catalog-site)
+        - [Let's Encrypt Catalog certification](#lets-encrypt-catalog-certification)
+        - [Reload the httpd server](#reload-the-httpd-server)
+        - [SSL Cetificate test](#ssl-cetificate-test)
 - [References](#references)
 
 <!-- /MarkdownTOC -->
@@ -307,20 +310,79 @@ sudo mkdir /etc/httpd/sites-{enabled,available}
 ```
 Create a file called `catalog.conf` and copy the following inside
 ```html
-Listen 80
-Listen 443
+H2Direct on
+Protocols h2 h2c http/1.1
 
 <VirtualHost *:80>
-  ServerName catalog.vps551706.ovh.net
-  DocumentRoot /var/www/catalog
-  Redirect permanent "/" "https://catalog.vps551706.ovh.net"
-</VirtualHost>
-
-<VirtualHost *:443>
-  ServerName catalog.vps551706.ovh.net
+  ServerName catalog.XXXXX.net
+  ServerAlias vpsXXX.ovh.net
+  H2Upgrade on
+  Redirect permanent "/" "https://catalog.XXXXX.net"
   DocumentRoot /var/www/catalog
 </VirtualHost>
 ```
+Make a link to sites-available
+```bash
+sudo ln -s /etc/httpd/sites-available/catalog.conf catalog.conf
+```
+Let apache search through the enabled sites by appending the following code to `/etc/httpd/conf/httpd.conf`
+```bash
+# Load virtual host config files in the "/etc/httpd/sites-enabled" directory, if any.
+Include sites-enabled/*.conf
+```
+Secure the site with a strong CipherSuite and SSL Protocol.  
+Append the following code to `/etc/httpd/conf.d/ssl.conf` behind `</VirtualHost>`
+```bash
+SSLProtocol All -SSLv2 -SSLv3 -TLSv1 -TLSv1.1
+
+SSLCipherSuite ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:!aNULL:!eNULL:!EXPORT:!DES:!LOW:!3DES:!MD5:!EXP:!PSK:!DSS:!RC4:!SEED:!IDEA:!ECDSA
+
+SSLHonorCipherOrder On
+Header always set Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+Header always set X-Frame-Options DENY
+Header always set X-Content-Type-Options nosniff
+# Requires Apache >= 2.4
+SSLCompression off
+SSLUseStapling on
+SSLStaplingCache "shmcb:logs/stapling-cache(150000)"
+# Requires Apache >= 2.4.11
+SSLSessionTickets Off
+```
+Create the catalog directory
+```bash
+sudo cp -r /var/www/html /var/www/catalog
+```
+To solve some http2 problems we need to use the MPM event module.  
+Open wit Vi `/etc/httpd/conf.modules.d` and comment out all the `LoadModule ...` except for the `LoadModule mpm_event_module modules/mod_mpm_event.so`
+
+#### Let's Encrypt Catalog certification
+Let's encrypt will create SSL certificates for our site with a expiration of 3 months.  
+When asked to redirect all http to https enter number `2`
+```bash
+sudo certbot --apache -d catalog.XXXX.net
+```
+This will have created another configuration file called `/etc/httpd/site-available/catalog-le-ssl.conf`  
+Add the following line after `DocumentRoot /var/www/catalog` to ensure it will try to use http2
+```bash
+Protocols h2 http/1.1
+```
+Open with VI the `/etc/letsencrypt/options-ssl-apache.conf` and comment out the line `SSLProtocol` and `SSLCipherSuite` and add the following code below them.
+```bash
+SSLProtocol All -SSLv2 -SSLv3 -TLSv1 -TLSv1.1
+
+SSLCipherSuite ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:!aNULL:!eNULL:!EXPORT:!DES:!LOW:!3DES:!MD5:!EXP:!PSK:!DSS:!RC4:!SEED:!IDEA:!ECDSA
+```
+#### Reload the httpd server
+Now you'll need to reload the httpd server with either
+```bash
+sudo systemctl restart httpd.service
+```
+or
+```bash
+sudo apachectl restart
+```
+#### SSL Cetificate test
+Go to [SSLlabs](https://www.ssllabs.com/ssltest/) and enter your webaddress and check that your site is secure. it shoud receive at least an A+
 
 
 
@@ -334,4 +396,5 @@ Listen 443
 ## References
 [Change default port CentOS 7](https://www.liberiangeek.net/2014/11/change-openssh-port-centos-7/)  
 [Secure your SSH](https://www.hugeserver.com/kb/secure-ssh-on-centos-7/)  
-[CentOS 7 update kernel](https://www.tecmint.com/install-upgrade-kernel-version-in-centos-7/)
+[CentOS 7 update kernel](https://www.tecmint.com/install-upgrade-kernel-version-in-centos-7/)  
+[Encryption hardening](https://bettercrypto.org/static/applied-crypto-hardening.pdf)
