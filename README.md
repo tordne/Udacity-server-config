@@ -29,8 +29,10 @@
         - [Server Configuartions](#server-configuartions)
         - [Postgresql](#postgresql)
         - [Python 3.X](#python-3x)
+        - [virtualenv](#virtualenv)
         - [Apache 2.4.33](#apache-2433)
         - [Let's encrypt Certbot](#lets-encrypt-certbot)
+        - [WSGI python3.6](#wsgi-python36)
     - [Advanced Server Setup](#advanced-server-setup)
         - [Prompt](#prompt)
         - [Timezone UTC](#timezone-utc)
@@ -41,6 +43,10 @@
         - [Let's Encrypt Catalog certification](#lets-encrypt-catalog-certification)
         - [Reload the httpd server](#reload-the-httpd-server)
         - [SSL Cetificate test](#ssl-cetificate-test)
+        - [Postgresql setup](#postgresql-setup)
+        - [Catalog Website setup](#catalog-website-setup)
+        - [Populating the database](#populating-the-database)
+        - [Reload and Restart the Server](#reload-and-restart-the-server)
 - [References](#references)
 
 <!-- /MarkdownTOC -->
@@ -56,7 +62,16 @@ I made an account and created an instance and after going through the inital set
 * **Cronyd** CentOS uses crony as standard, it is more reliable, faster, more accurate than ntpd. It also doesn't need any open ports to synchronise with online timeservers.
 
 For These reasons I decided to create a server on [OVH](https://www.ovh.co.uk) and host our previous projects on the VPS.  
-OVH has several choices for your VPS, in this instance we will use the basic [VPS SSD 1](https://www.ovh.co.uk/vps/vps-ssd.xml)
+OVH has several choices for your VPS, in this instance we will use the basic [VPS SSD 1](https://www.ovh.co.uk/vps/vps-ssd.xml)  
+
+We will use the latest available packages and standards including:
+
+* http2 : HTTP 2.0 - faster, simpler, more secure
+* Apache2.4.33 : latest package supporting http2
+* WSGI : supporting Python3.6
+* Cronyd : faster, more accurate, less memory & cpu intensive Network Time Protocol
+* Python3.6 : python2.x is ending its livetime in less than 24 months
+* LetsEncrypt : Free and secure HTTPS
 
 ## My VPS Configuartions
 ### Public IP
@@ -221,13 +236,19 @@ git clone https://github.com/tordne/Udacity-server-config.git
 #### Postgresql
 We'll install postgresql to use for our item-catalog project
 ```bash
-sudo yum install postgresql
+sudo yum install postgresql postgresql-server
 ```
 
 #### Python 3.X
 Install the latest python version.
 ```bash
 sudo yum install python36u python36u-pip
+```
+
+#### virtualenv
+Python venv does not contain the `activate_this.py` file, hence we prefer to use virtualenv
+```bash
+sudo python3.6 -m pip install virtualenv
 ```
 
 #### Apache 2.4.33
@@ -241,6 +262,12 @@ When using logins and databases it should be standard for sites to use https.
 Certbot gives free SSL certificates which can be renewed every 3 months.
 ```bash
 sudo yum install httpd24u-mod_ssl
+```
+
+#### WSGI python3.6
+Install the latest mod_wsgi
+```bash
+sudo yum install python36u-mod_wsgi
 ```
 
 ### Advanced Server Setup
@@ -306,20 +333,63 @@ sudo systemctl restart httpd.service
 #### Configure Apache for Catalog site
 To create multiple virtual hosts we need to prepare apache
 ```bash
-sudo mkdir /etc/httpd/sites-{enabled,available}
+sudo mkdir /etc/httpd/sites-{enabled,available,variables}
 ```
 Create a file called `catalog.conf` and copy the following inside
 ```html
-H2Direct on
-Protocols h2 h2c http/1.1
+WSGISocketPrefix /var/run/wsgi
 
 <VirtualHost *:80>
   ServerName catalog.XXXXX.net
-  ServerAlias vpsXXX.ovh.net
-  H2Upgrade on
-  Redirect permanent "/" "https://catalog.XXXXX.net"
-  DocumentRoot /var/www/catalog
+      Include /etc/httpd/sites-variables/catalog-vars.conf
+
+    WSGIDaemonProcess catalog.binops.co.uk user=cataloguser group=cataloguser threads=5 home=/var/www/catalog/item-catalog/ python-path=/var/www/catalog/item-catalog:/var/www/catalog/env/lib/python3.6/site-packages/
+    WSGIScriptAlias / /var/www/catalog/item-catalog/catalog.wsgi
+
+    <Directory /var/www/catalog>
+        WSGIProcessGroup catalog.binops.co.uk
+        WSGIApplicationGroup %{GLOBAL}
+        WSGIScriptReloading On
+    Require all granted
+    </Directory>
+
+    LogLevel info
+    ErrorLog /var/log/httpd/catalog.log
+    CustomLog /var/log/httpd/catalog-requests.log combined
+
+    RewriteEngine on
+    RewriteCond %{SERVER_NAME} =catalog.binops.co.uk
+    RewriteRule ^ https://%{SERVER_NAME}%{REQUEST_URI} [END,NE,R=permanent]
 </VirtualHost>
+
+
+<IfModule mod_ssl.c>
+<VirtualHost *:443>
+    ServerName catalog.binops.co.uk
+
+    Include /etc/httpd/sites-variables/catalog-vars.conf
+
+    Protocols h2 http/1.1
+    Include /etc/letsencrypt/options-ssl-apache.conf
+
+    WSGIScriptAlias / /var/www/catalog/item-catalog/catalog.wsgi
+  
+    <Directory /var/www/catalog>
+         WSGIProcessGroup catalog.binops.co.uk
+         WSGIApplicationGroup %{GLOBAL}
+         WSGIScriptReloading On
+         Require all granted
+    </Directory>
+
+    LogLevel info
+    ErrorLog /var/log/httpd/catalog443.log
+    CustomLog /var/log/httpd/catalog443-requests.log combined
+    SSLCertificateFile /etc/letsencrypt/live/catalog.binops.co.uk/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/catalog.binops.co.uk/privkey.pem
+    Header always set Strict-Transport-Security "max-age=31536000"
+    Header always set Content-Security-Policy upgrade-insecure-requests
+</VirtualHost>
+</IfModule>
 ```
 Make a link to sites-available
 ```bash
@@ -329,6 +399,15 @@ Let apache search through the enabled sites by appending the following code to `
 ```bash
 # Load virtual host config files in the "/etc/httpd/sites-enabled" directory, if any.
 Include sites-enabled/*.conf
+```
+Create the `/etc/httpd/sites-variables/catalog-vars.conf` with all the site specific variables.
+```html
+SetEnv FLASK_APP /var/www/catalog/item-catalog/catalog.py
+SetEnv FLASK_DEBUG 0
+SetEnv FLASK_CONFIG /var/www/catalog/item-catalog/config.py
+SetEnv FLASK_SETTINGS config.DevelopmentConfig
+SetEnv CLIENT_SECRET_FILE /var/www/catalog/item-catalog/client_secret.json
+SetEnv DATABASE_URL postgresql://catalog_admin:CXXXXXXXX@localhost:5432/catalogdb
 ```
 Secure the site with a strong CipherSuite and SSL Protocol.  
 Append the following code to `/etc/httpd/conf.d/ssl.conf` behind `</VirtualHost>`
@@ -348,10 +427,6 @@ SSLStaplingCache "shmcb:logs/stapling-cache(150000)"
 # Requires Apache >= 2.4.11
 SSLSessionTickets Off
 ```
-Create the catalog directory
-```bash
-sudo cp -r /var/www/html /var/www/catalog
-```
 To solve some http2 problems we need to use the MPM event module.  
 Open wit Vi `/etc/httpd/conf.modules.d` and comment out all the `LoadModule ...` except for the `LoadModule mpm_event_module modules/mod_mpm_event.so`
 
@@ -359,7 +434,7 @@ Open wit Vi `/etc/httpd/conf.modules.d` and comment out all the `LoadModule ...`
 Let's encrypt will create SSL certificates for our site with a expiration of 3 months.  
 When asked to redirect all http to https enter number `2`
 ```bash
-sudo certbot --apache -d catalog.XXXX.net
+sudo certbot --apache --non-interactive --agree-tos --redirect --hsts --uir --rsa-key-size 4096 --domain catalog.XXXX.net
 ```
 This will have created another configuration file called `/etc/httpd/site-available/catalog-le-ssl.conf`  
 Add the following line after `DocumentRoot /var/www/catalog` to ensure it will try to use http2
@@ -384,14 +459,127 @@ sudo apachectl restart
 #### SSL Cetificate test
 Go to [SSLlabs](https://www.ssllabs.com/ssltest/) and enter your webaddress and check that your site is secure. it shoud receive at least an A+
 
+#### Postgresql setup
+First we will need to enable the postgresql server
+```bash
+sudo systemctl enable postgresql
+sudo postgresql-setup initdb
+```
+Enable password authentication in `/var/lib/pgsql/data/pg_hba.conf`.  
+Open the file with vi and search for the lines
+```bash
+# IPv4 local connections:
+host    all             all             127.0.0.1/32            ident
+# IPv6 local connections:
+host    all             all             ::1/128                 ident
+```
+Change it to
+```bash
+# IPv4 local connections:
+host    all             all             127.0.0.1/32            md5
+# IPv6 local connections:
+host    all             all             ::1/128                 md5
+```
+Start or Restart the postgresql service
+```bash
+sudo systemctl restart postgresql
+```
+Set password for postgres user.
+```bash
+sudo passwd postgres
+```
+then login as postgres user using su.
+```bash
+su - postgres
+```
+Enter postgresql and create a new Database user and grant privileges.
+```bash
+psql
+postgres=# CREATE DATABASE catalogdb;
+CREATE DATABASE
+postgres=# CREATE USER catalog_admin WITH PASSWORD 'C1t1l0gFr01t';
+CREATE ROLE
+postgres=# GRANT ALL PRIVILEGES ON DATABASE catalogdb TO catalog_admin;
+GRANT
+postgres=# \q
+```
+Then exit the postgres bash session. with `exit`.  
 
+#### Catalog Website setup
+First we add a user with its home directory under /var/www
+```bash
+sudo useradd -m -d /var/www/catalog -c "Catalog User" cataloguser
+sudo passwd cataloguser
+```
+Login as cataloguser
+```bash
+su - cataloguser
+```
+Go to the home directory and create a virtual environment and activate
+```bash
+cd
+virtualenv env
+source env/bin/activate
+```
+Clone the git repo
+```bash
+git clone https://github.com/tordne/item-catalog.git
+```
+Enter the item-catalog directory and install all the necessary packages
+```bash
+cd item-catalog
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+Create the `/var/www/catalog/item-catalog/catalog.wsgi` file and enter the following code
+```python
+#!/usr/bin/env python
 
+import os
 
+''' Start the virtual environment '''
+activate_this = '/var/www/catalog/env/bin/activate_this.py'
+with open(activate_this) as file_:
+    exec(file_.read(), dict(__file__=activate_this))
 
+''' Start the wsgi application '''
+def application(req_environ, start_response):
+   
+   os.environ['FLASK_APP'] = req_environ['FLASK_APP']
+   os.environ['FLASK_DEBUG'] = req_environ['FLASK_DEBUG']
+   os.environ['FLASK_CONFIG'] = req_environ['FLASK_CONFIG']
+   os.environ['FLASK_SETTINGS'] = req_environ['FLASK_SETTINGS']
+   os.environ['CLIENT_SECRET_FILE'] = req_environ['CLIENT_SECRET_FILE']
+   os.environ['DATABASE_URL'] = req_environ['DATABASE_URL']
 
+   from project.server import app as _application
 
-
-
+   return _application(req_environ, start_response)
+```
+Go to google developers console and download your client_secret.json and place it under `/var/www/catalog/item-catalog/client_secrent.json`  
+Copy the `config-template.py` to config.py and change the following lines with the appropriate content
+```python
+CLIENT_ID = '101XXXXXXX-l3hXXXXXXXX8e.apps.googleusercontent.com '
+CLIENT_SECRET = 'tVXXXXXXXXJ7 '
+CLIENT_SECRET_FILE = '/vagrant/client_secret.json'
+SQLALCHEMY_DATABASE_URI = 'postgresql://vagrant:vagrant@localhost/catalog'
+```
+#### Populating the database
+We have set up a database which has not yet been populated so execute the following command to temporarily set the env variables and execute `lotsOfCategoriesAndItems.py`
+```bash
+export FLASK_APP=/var/www/catalog/item-catalog/catalog.py
+export FLASK_DEBUG=1
+export FLASK_CONFIG=/var/www/catalog/item-catalog/config.py
+export FLASK_SETTINGS=config.DevelopmentConfig
+export CLIENT_SECRET_FILE=/var/www/catalog/item-catalog/client_secret.json
+python lotsOfCategoriesAndItems.py
+```
+#### Reload and Restart the Server
+To reload Apache and WSGI execute the following 2 codes.
+```bash
+touch /var/www/catalog/item-catalog/catallog.wsgi
+sudo systemctl restart httpd
+```
 
 ## References
 [Change default port CentOS 7](https://www.liberiangeek.net/2014/11/change-openssh-port-centos-7/)  
