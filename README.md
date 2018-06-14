@@ -37,6 +37,7 @@
         - [Prompt](#prompt)
         - [Timezone UTC](#timezone-utc)
         - [Chrony NTP Server](#chrony-ntp-server)
+        - [Testing Chrony NTP Server](#testing-chrony-ntp-server)
         - [Secure SSH](#secure-ssh)
         - [Firewall configuration](#firewall-configuration)
         - [Start Apache service](#start-apache-service)
@@ -298,6 +299,28 @@ Now restart the `Chronyd service`
 ```bash
 sudo systemctl restart chronyd
 ```
+#### Testing Chrony NTP Server
+Check that chronyc is synchronising with external NTP servers.  
+The number of sources should be not 0 and higher than 2, to properly function.
+```bash
+sudo chronyc sources
+```
+Then you can also test the server side is working properly.
+Open 2 terminals and 1 wireshark.  
+In wireshark start capturing on your default network interface and set the filter to `udp.port == 123`  
+Terminal 1 should be ssh in `grader@XX.XX.XX.XX` and run the command
+```bash
+sudo tcpdump -A -vv -i eth0 'port 123'
+```
+Terminal 2 should be local and execute the following command.
+```bash
+sudo nmap -sU -p 123 XX.XX.XX.XX
+```
+This will send a request to your NTP server, and you should see the following:
+
+* tcpdump & Wireshark have captured your local request and server response
+* nmap will show that port 123/UDP is open
+* <img src="./img/ntp-test.png" alt="Wireshark, nmap NTP test" width="1138" height="640">
 
 #### Secure SSH
 To protect your VPS against brute force password attacks we'll use passwordless ssh login.  
