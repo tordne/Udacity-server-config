@@ -36,6 +36,7 @@
     - [Advanced Server Setup](#advanced-server-setup)
         - [Prompt](#prompt)
         - [Timezone UTC](#timezone-utc)
+        - [Chrony NTP Server](#chrony-ntp-server)
         - [Secure SSH](#secure-ssh)
         - [Firewall configuration](#firewall-configuration)
         - [Start Apache service](#start-apache-service)
@@ -285,6 +286,17 @@ The timezone is set in `/etc/localtime` which is a symlink to one of the time zo
 To change it we'll use the following command.
 ```bash
 sudo timedatectl set-timezone UTC
+```
+
+#### Chrony NTP Server
+To open the ntp server open the `/etc/chrony.conf` file and add the following line under `#Allow NTP client access from local network`
+```bash
+allow
+```
+Adding this line without a subnet will allow clients from all addresses to use the ntp.  
+Now restart the `Chronyd service`
+```bash
+sudo systemctl restart chronyd
 ```
 
 #### Secure SSH
