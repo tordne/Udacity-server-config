@@ -40,6 +40,7 @@
         - [Testing Chrony NTP Server](#testing-chrony-ntp-server)
         - [Secure SSH](#secure-ssh)
         - [Firewall configuration](#firewall-configuration)
+        - [Testing Firewall](#testing-firewall)
         - [Start Apache service](#start-apache-service)
         - [Configure Apache for Catalog site](#configure-apache-for-catalog-site)
         - [Let's Encrypt Catalog certification](#lets-encrypt-catalog-certification)
@@ -350,14 +351,41 @@ sudo systemctl sshd.service
 ```
 
 #### Firewall configuration
-Firewalld is active and has multiple zones, of which by default only public is active with several ports.  
-We will need to close port 22 and open others i.e. http, https, ntp
+Firewalld is active and has multiple zones, of which by default only public is active with several services.  
+Firewalld uses services for standard port, to get a full list of all the service firewall knows about use the command
+```bash
+sudo firewall-cmd --get-service
+```
+We will need to add 3 services `http, https, ntp` and remove 1 `ssh` which will respectively open ports `80, 443, 123` and close port `22`
 ```bash
 sudo firewall-cmd --permanent --zone=public --add-service=http
 sudo firewall-cmd --permanent --zone=public --add-service=https
 sudo firewall-cmd --permanent --zone=public --add-service=ntp
 sudo firewall-cmd --permanent --zone=public --remove-service=ssh
 sudo firewall-cmd --reload
+```
+
+#### Testing Firewall
+To test the firewall open a terminal locally and enter the following command  
+```bash
+sudo nmap -sTU -T5 -p80,443,123,2200 XX.XX.XX.XX
+```
+and this should give the following output, which show that all necessary ports are open.
+```bash
+Starting Nmap 6.40 ( http://nmap.org ) at 2018-06-15 00:10 BST
+Nmap scan report for 98.ip-51-38-83.eu (51.38.83.98)
+Host is up (0.034s latency).
+PORT     STATE    SERVICE
+80/tcp   open     http
+123/tcp  filtered ntp
+443/tcp  open     https
+2200/tcp open     ici
+80/udp   filtered http
+123/udp  open     ntp
+443/udp  filtered https
+2200/udp filtered ici
+
+Nmap done: 1 IP address (1 host up) scanned in 0.24 seconds
 ```
 
 #### Start Apache service
