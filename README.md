@@ -75,12 +75,11 @@ We will use the latest available packages and standards including:
 
 ## My VPS Configuartions
 ### Public IP & HostNames
-```
-General hostname: [http://vps551706.ovh.net/](http://vps551706.ovh.net)
-Catalog hostname: [http://catalog.binops.co.uk/](http://catalog.binops.co.uk)
-Your VPS's IPv4 address is: [51.38.83.98](https://catalog.binops.co.uk)
-Your VPS's IPv6 address is: [2001:41d0:0801:2000:0000:0000:0000:0d39](https://catalog.binops.co.uk)
-```
+
+* General hostname: [http://vps551706.ovh.net/](http://vps551706.ovh.net)
+* Catalog hostname: [http://catalog.binops.co.uk/](http://catalog.binops.co.uk)
+* Your VPS's IPv4 address is: [51.38.83.98](https://catalog.binops.co.uk)
+* Your VPS's IPv6 address is: [2001:41d0:0801:2000:0000:0000:0000:0d39](https://catalog.binops.co.uk)
 
 ## Create a VPS
 After following the above link press "redeem" and you'll be directed to the order page. When in London use the following settings or change according to your location.
