@@ -4,7 +4,7 @@
 
 - [Synopsis](#synopsis)
 - [My VPS Configuartions](#my-vps-configuartions)
-    - [Public IP](#public-ip)
+    - [Public IP & HostNames](#public-ip--hostnames)
 - [Create a VPS](#create-a-vps)
     - [Options](#options)
     - [Review](#review)
@@ -74,10 +74,12 @@ We will use the latest available packages and standards including:
 * LetsEncrypt : Free and secure HTTPS
 
 ## My VPS Configuartions
-### Public IP
+### Public IP & HostNames
 ```
-Your VPS's IPv4 address is: 51.38.83.98
-Your VPS's IPv6 address is: 2001:41d0:0801:2000:0000:0000:0000:0d39
+General hostname: [http://vps551706.ovh.net/](http://vps551706.ovh.net)
+Catalog hostname: [http://catalog.binops.co.uk/](http://catalog.binops.co.uk)
+Your VPS's IPv4 address is: [51.38.83.98](https://catalog.binops.co.uk)
+Your VPS's IPv6 address is: [2001:41d0:0801:2000:0000:0000:0000:0d39](https://catalog.binops.co.uk)
 ```
 
 ## Create a VPS
@@ -559,6 +561,7 @@ def application(req_environ, start_response):
 Go to google developers console and download your client_secret.json and place it under `/var/www/catalog/item-catalog/client_secrent.json`  
 Copy the `config-template.py` to config.py and change the following lines with the appropriate content
 ```python
+SECRET_KEY = 'very_secret_key'
 CLIENT_ID = '101XXXXXXX-l3hXXXXXXXX8e.apps.googleusercontent.com '
 CLIENT_SECRET = 'tVXXXXXXXXJ7 '
 CLIENT_SECRET_FILE = '/vagrant/client_secret.json'
